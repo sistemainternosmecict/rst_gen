@@ -6,9 +6,10 @@ import os, sys
 from reportlab.pdfgen import canvas
 from flask import Flask, request, jsonify, send_file, redirect, url_for
 from flask_cors import CORS
+from pathlib import Path
 
 app = Flask(__name__)
-CORS(app, origins=["*"])
+CORS(app, origins=["http://192.168.100.118:80", "http://192.168.100.118", "http://127.0.0.1", "http://127.0.0.1:80"])
 
 def draw_wrapped_text(c, text, x, y, max_width, font_name="Helvetica", font_size=9, line_height=12):
     """
@@ -68,6 +69,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 class Relatorio_servico_tecnico:
+    BASE_EXPORT_DIR = Path(__file__).resolve().parent
     image_path = resource_path("header.png")
     footer = resource_path("footer.png")
     PAGE_WIDTH, PAGE_HEIGHT = A4
@@ -83,8 +85,10 @@ class Relatorio_servico_tecnico:
     img_height = img_width * aspect
 
     def __init__(self, dados):
+        print(self.BASE_EXPORT_DIR)
+        os.makedirs(self.BASE_EXPORT_DIR, exist_ok=True)
         self.filename = f"RST_gerado.pdf"
-        self.export_dir = os.path.join(os.getcwd(), "")
+        self.export_dir = self.BASE_EXPORT_DIR
         self.definir_diretorio_exportacao(self.export_dir)
         self.c = canvas.Canvas(self.pdf_path, pagesize=A4)
         self.c.drawImage(
@@ -352,8 +356,8 @@ class Relatorio_servico_tecnico:
 @app.route("/", methods=["POST"])
 def index():
     json_data = request.get_json()
-    #print(json_data)
     rst = Relatorio_servico_tecnico(json_data)
+    print("PDFPATH: ", rst.pdf_path)
     rst.salvar()
 
     resposta_json = {
@@ -367,12 +371,13 @@ def index():
 
 @app.route('/pdf')
 def enviar_pdf():
+    caminho = Path(__file__).resolve().parent / "RST_gerado.pdf"
     return send_file(
-        'RST_gerado.pdf',
+        caminho,
         mimetype='application/pdf',
         as_attachment=False,        # True = download, False = abrir no browser
         download_name='relatorio.pdf'
     )
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(port=5001)
