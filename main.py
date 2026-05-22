@@ -2,14 +2,14 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
-import os, sys
-from reportlab.pdfgen import canvas
+import os, sys, uuid
 from flask import Flask, request, jsonify, send_file, redirect, url_for
 from flask_cors import CORS
 from pathlib import Path
 
 app = Flask(__name__)
-CORS(app, origins=["http://192.168.100.118:80", "http://192.168.100.118", "http://127.0.0.1", "http://127.0.0.1:80"])
+# Mantendo as origens que foram adicionadas remotamente, mas permitindo flexibilidade se necessário
+CORS(app, origins=["*"]) 
 
 def draw_wrapped_text(c, text, x, y, max_width, font_name="Helvetica", font_size=9, line_height=12):
     """
@@ -85,9 +85,9 @@ class Relatorio_servico_tecnico:
     img_height = img_width * aspect
 
     def __init__(self, dados):
-        print(self.BASE_EXPORT_DIR)
+        self.id_unico = str(uuid.uuid4().hex)[:8]
+        self.filename = f"RST_{self.id_unico}.pdf"
         os.makedirs(self.BASE_EXPORT_DIR, exist_ok=True)
-        self.filename = f"RST_gerado.pdf"
         self.export_dir = self.BASE_EXPORT_DIR
         self.definir_diretorio_exportacao(self.export_dir)
         self.c = canvas.Canvas(self.pdf_path, pagesize=A4)
@@ -357,27 +357,26 @@ class Relatorio_servico_tecnico:
 def index():
     json_data = request.get_json()
     rst = Relatorio_servico_tecnico(json_data)
-    print("PDFPATH: ", rst.pdf_path)
     rst.salvar()
 
-    resposta_json = {
-        "arquivo_gerado":rst.filename,
-        "success":True
-    }
+    return jsonify({
+        "arquivo_gerado": rst.filename,
+        "success": True,
+        "url": url_for("enviar_pdf", filename=rst.filename, _external=True)
+    })
 
-    if resposta_json["success"]:
-        return redirect(url_for("enviar_pdf"))
-    return jsonify(resposta_json)
-
-@app.route('/pdf')
-def enviar_pdf():
-    caminho = Path(__file__).resolve().parent / "RST_gerado.pdf"
-    return send_file(
-        caminho,
-        mimetype='application/pdf',
-        as_attachment=False,        # True = download, False = abrir no browser
-        download_name='relatorio.pdf'
-    )
+@app.route('/pdf/<filename>')
+def enviar_pdf(filename):
+    file_path = os.path.join(Relatorio_servico_tecnico.BASE_EXPORT_DIR, filename)
+    if os.path.exists(file_path):
+        return send_file(
+            file_path,
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name='relatorio.pdf'
+        )
+    return jsonify({"error": "Arquivo não encontrado"}), 404
 
 if __name__ == "__main__":
-    app.run(port=5001)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
