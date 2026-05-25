@@ -1,0 +1,1 @@
+web: gunicorn main:app --workers 4 --threads 2 -b 0.0.0.0:$PORT
