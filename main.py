@@ -6,10 +6,18 @@ import os, sys, uuid
 from flask import Flask, request, jsonify, send_file, redirect, url_for
 from flask_cors import CORS
 from pathlib import Path
+from dotenv import load_dotenv
+from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
+
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 app = Flask(__name__)
 # Mantendo as origens que foram adicionadas remotamente, mas permitindo flexibilidade se necessário
 CORS(app, origins=["*"]) 
+
+load_dotenv()
 
 def draw_wrapped_text(c, text, x, y, max_width, font_name="Helvetica", font_size=9, line_height=12):
     """
@@ -67,6 +75,33 @@ def resource_path(relative_path):
     else:
         base_path = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_path, relative_path)
+
+# If modifying these scopes, delete the file token.json.
+SCOPES = ['https://www.googleapis.com/auth/drive']
+
+def upload_file_to_drive(file_path, file_name, mime_type):
+    creds_file_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if not creds_file_path:
+        raise ValueError("GOOGLE_APPLICATION_CREDENTIALS not configured in .env")
+    if not os.path.exists(creds_file_path):
+        raise FileNotFoundError(f"Service account credentials file not found at {creds_file_path}")
+
+    creds = service_account.Credentials.from_service_account_file(
+        creds_file_path, scopes=SCOPES, subject='thyezoliveiramonteiro@smec.saquarema.rj.gov.br')
+
+    service = build('drive', 'v3', credentials=creds)
+
+    folder_id = os.getenv('GOOGLE_DRIVE_RST_FOLDER_ID')
+    if not folder_id:
+        raise ValueError("Google Drive RST Folder ID not configured in .env")
+
+    file_metadata = {
+        'name': file_name,
+        'parents': [folder_id]
+    }
+    media = MediaFileUpload(file_path, mimetype=mime_type, resumable=True)
+    file = service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
+    return file.get('webViewLink')
 
 class Relatorio_servico_tecnico:
     BASE_EXPORT_DIR = Path(__file__).resolve().parent
@@ -146,7 +181,6 @@ class Relatorio_servico_tecnico:
         self.current_y -= 25
 
         # Seção: Dados do Solicitante (fundo cinza)
-        self.current_y -= -5
         c.setFillColor(colors.grey)
         c.rect(self.LEFT_MARGIN, self.current_y - 5, self.RIGHT_MARGIN - self.LEFT_MARGIN, 12, fill=1, stroke=0)
         c.setFillColor(colors.black)
@@ -224,7 +258,6 @@ class Relatorio_servico_tecnico:
         self.current_y -= 25
 
         # Seção: Causas ou Problemas Técnicos Relacionados
-        self.current_y -= -5
         c.setFillColor(colors.grey)
         c.rect(self.LEFT_MARGIN, self.current_y - 5, self.RIGHT_MARGIN - self.LEFT_MARGIN, 12, fill=1, stroke=0)
         c.setFillColor(colors.black)
@@ -312,7 +345,6 @@ class Relatorio_servico_tecnico:
         c = self.c
 
         # Seção: Aceite do Serviço Técnico
-        self.current_y -= -5
         c.setFillColor(colors.grey)
         c.rect(self.LEFT_MARGIN, self.current_y - 5, self.RIGHT_MARGIN - self.LEFT_MARGIN, 12, fill=1, stroke=0)
         c.setFillColor(colors.black)
@@ -376,6 +408,64 @@ def enviar_pdf(filename):
             download_name='relatorio.pdf'
         )
     return jsonify({"error": "Arquivo não encontrado"}), 404
+
+@app.route('/upload-pdf', methods=['POST'])
+def upload_pdf():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part in the request"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    if file and file.filename.endswith('.pdf'):
+        try:
+            # Extract data for renaming from form fields
+            numero_oficio_raw = request.form.get('numero_oficio')
+            unidade_raw = request.form.get('unidade')
+
+            if not numero_oficio_raw:
+                return jsonify({"error": "Missing 'numero_oficio' in form data"}), 400
+            if not unidade_raw:
+                return jsonify({"error": "Missing 'unidade' in form data"}), 400
+
+            # Process numero_oficio: get the first number before '/'
+            numero_oficio_prefix = numero_oficio_raw.split('/')[0].strip()
+
+            # Process unidade: remove specified prefixes
+            prefixes_to_remove = [
+                "Escola Municipal",
+                "Creche Municipal",
+                "Centro municipal de educação",
+                "casa creche",
+                "colegio",
+                "escola municipalizada",
+                "creche municipalizada"
+            ]
+            cleaned_unidade = unidade_raw
+            for prefix in prefixes_to_remove:
+                # Use .lower() for case-insensitive comparison
+                if cleaned_unidade.lower().startswith(prefix.lower()):
+                    cleaned_unidade = cleaned_unidade[len(prefix):].strip()
+                    break # Assuming only one prefix will match
+
+            # Construct the new filename
+            new_filename = f"RST - {numero_oficio_prefix} - {cleaned_unidade}.pdf"
+
+            # Save the file temporarily with the new name
+            temp_dir = Path(__file__).resolve().parent / "temp_uploads"
+            os.makedirs(temp_dir, exist_ok=True)
+            temp_filepath = temp_dir / new_filename
+            file.save(temp_filepath)
+
+            # Upload to Google Drive with the new name
+            drive_url = upload_file_to_drive(str(temp_filepath), new_filename, 'application/pdf')
+            
+            # Clean up temporary file
+            os.remove(temp_filepath)
+
+            return jsonify({"message": "File uploaded successfully to Google Drive", "url": drive_url}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Invalid file type. Only PDF files are allowed."}), 400
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

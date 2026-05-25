@@ -9,3 +9,9 @@ wheels/
 # Virtual environments
 .venv
 RST_*.pdf
+
+# Google Drive API credentials and temporary files
+credentials.json
+credentials*.json
+token.json
+temp_uploads/
