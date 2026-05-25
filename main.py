@@ -13,6 +13,22 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+import os
+import json
+from pathlib import Path
+
+credentials_path = Path("credentials.json")
+
+if not credentials_path.exists():
+    credentials_data = json.loads(
+        os.environ["GOOGLE_CREDENTIALS_JSON"]
+    )
+
+    with open(credentials_path, "w") as f:
+        json.dump(credentials_data, f)
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
+
 app = Flask(__name__)
 # Mantendo as origens que foram adicionadas remotamente, mas permitindo flexibilidade se necessário
 CORS(app, origins=["*"]) 
@@ -80,14 +96,13 @@ def resource_path(relative_path):
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def upload_file_to_drive(file_path, file_name, mime_type):
-    creds_file_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    creds_file_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
     if not creds_file_path:
-        raise ValueError("GOOGLE_APPLICATION_CREDENTIALS not configured in .env")
+        raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set or is empty.")
     if not os.path.exists(creds_file_path):
         raise FileNotFoundError(f"Service account credentials file not found at {creds_file_path}")
 
-    creds = service_account.Credentials.from_service_account_file(
-        creds_file_path, scopes=SCOPES, subject='thyezoliveiramonteiro@smec.saquarema.rj.gov.br')
+    creds = service_account.Credentials.from_service_account_file(creds_file_path, scopes=SCOPES, subject="thyezoliveiramonteiro@smec.saquarema.rj.gov.br")
 
     service = build('drive', 'v3', credentials=creds)
 
