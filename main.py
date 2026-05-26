@@ -100,13 +100,13 @@ def resource_path(relative_path):
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def upload_file_to_drive(file_path, file_name, mime_type):
-    creds_file_path = os.environ.get('GOOGLE_CREDENTIALS_JSON')
+    creds_file_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
     if not creds_file_path:
         raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set or is empty.")
     if not os.path.exists(creds_file_path):
         raise FileNotFoundError(f"Service account credentials file not found at {creds_file_path}")
 
-    creds = service_account.Credentials.from_service_account_file(creds_file_path, scopes=SCOPES, subject="thyezoliveiramonteiro@smec.saquarema.rj.gov.br")
+    creds = service_account.Credentials.from_service_account_fil(creds_file_path, scopes=SCOPES, subject="thyezoliveiramonteiro@smec.saquarema.rj.gov.br")
 
     service = build('drive', 'v3', credentials=creds)
 
