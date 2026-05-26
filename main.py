@@ -35,6 +35,10 @@ CORS(app, origins=["*"])
 
 load_dotenv()
 
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
 def draw_wrapped_text(c, text, x, y, max_width, font_name="Helvetica", font_size=9, line_height=12):
     """
     Desenha texto com quebra automática de linha dentro de uma largura máxima.
@@ -96,7 +100,7 @@ def resource_path(relative_path):
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def upload_file_to_drive(file_path, file_name, mime_type):
-    creds_file_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+    creds_file_path = os.environ.get('GOOGLE_CREDENTIALS_JSON')
     if not creds_file_path:
         raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set or is empty.")
     if not os.path.exists(creds_file_path):
