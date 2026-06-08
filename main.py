@@ -9,6 +9,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
+import base64
+import io
 
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -154,6 +156,16 @@ class Relatorio_servico_tecnico:
             preserveAspectRatio=True,
             mask='auto'
         )
+
+        self.assinatura_img = None
+        if 'assinatura' in dados and dados['assinatura']:
+            try:
+                # Remove o prefixo data:image/png;base64, se houver
+                data = dados['assinatura'].split(',')[1] if ',' in dados['assinatura'] else dados['assinatura']
+                img_data = base64.b64decode(data)
+                self.assinatura_img = ImageReader(io.BytesIO(img_data))
+            except Exception as e:
+                print("Erro ao processar assinatura:", e)
 
         self.escrever_dados(dados)
 
@@ -383,7 +395,16 @@ class Relatorio_servico_tecnico:
 
         # Legendas
         c.drawCentredString(self.LEFT_MARGIN + largura_linha / 2, linha_y - 12, "Responsável Técnico")
-        c.drawCentredString(self.RIGHT_MARGIN - largura_linha / 2, linha_y - 12, "Unidade Escolar")
+        c.setFont("Helvetica-Bold", 9)
+        c.drawCentredString(self.RIGHT_MARGIN - largura_linha / 2, linha_y - 12, "Responsável na Unidade")
+        c.setFont("Helvetica", 9)
+
+        # Desenhar assinatura se presente
+        if self.assinatura_img:
+            # Posição centralizada acima da linha, com altura aumentada
+            x_img = self.RIGHT_MARGIN - largura_linha + 10
+            y_img = linha_y - 45 # Ajustado para baixo para centralizar a imagem sobre a linha
+            c.drawImage(self.assinatura_img, x_img, y_img, width=160, height=90, preserveAspectRatio=True, mask='auto')
 
         self.current_y = linha_y - 50
 
@@ -407,6 +428,7 @@ class Relatorio_servico_tecnico:
 @app.route("/", methods=["POST"])
 def index():
     json_data = request.get_json()
+    print(json_data)
     rst = Relatorio_servico_tecnico(json_data)
     rst.salvar()
 
