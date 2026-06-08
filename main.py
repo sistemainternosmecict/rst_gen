@@ -401,10 +401,11 @@ class Relatorio_servico_tecnico:
 
         # Desenhar assinatura se presente
         if self.assinatura_img:
-            # Posição centralizada acima da linha, com escala aumentada (dobrada)
-            x_img = self.RIGHT_MARGIN - largura_linha + 10
-            y_img = linha_y - 90 # Ajustado para baixo para centralizar a imagem maior sobre a linha
+            # Posição centralizada, movida 100 pixels para a esquerda em relação ao ajuste anterior
+            x_img = (self.RIGHT_MARGIN - largura_linha + 10) - 20 - 60
+            y_img = linha_y - 90 # Ajustado para baixo para centralizar a imagem sobre a linha
             c.drawImage(self.assinatura_img, x_img, y_img, width=320, height=180, preserveAspectRatio=True, mask='auto')
+
 
         self.current_y = linha_y - 50
 
