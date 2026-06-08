@@ -33,7 +33,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
 
 app = Flask(__name__)
 # Mantendo as origens que foram adicionadas remotamente, mas permitindo flexibilidade se necessário
-CORS(app, origins=["*"]) 
+CORS(app, origins=["*", "http://100.110.148.52:8080"]) 
 
 load_dotenv()
 
@@ -401,10 +401,10 @@ class Relatorio_servico_tecnico:
 
         # Desenhar assinatura se presente
         if self.assinatura_img:
-            # Posição centralizada acima da linha, com altura aumentada
+            # Posição centralizada acima da linha, com escala aumentada (dobrada)
             x_img = self.RIGHT_MARGIN - largura_linha + 10
-            y_img = linha_y - 45 # Ajustado para baixo para centralizar a imagem sobre a linha
-            c.drawImage(self.assinatura_img, x_img, y_img, width=160, height=90, preserveAspectRatio=True, mask='auto')
+            y_img = linha_y - 90 # Ajustado para baixo para centralizar a imagem maior sobre a linha
+            c.drawImage(self.assinatura_img, x_img, y_img, width=320, height=180, preserveAspectRatio=True, mask='auto')
 
         self.current_y = linha_y - 50
 
