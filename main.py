@@ -429,7 +429,6 @@ class Relatorio_servico_tecnico:
 @app.route("/", methods=["POST"])
 def index():
     json_data = request.get_json()
-    print(json_data)
     rst = Relatorio_servico_tecnico(json_data)
     rst.salvar()
 
