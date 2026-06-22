@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Validação de Documento</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        h1 { color: #333; }
+        .data-field { margin-bottom: 10px; }
+        .label { font-weight: bold; }
+        .status-ok { color: green; }
+        .status-error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if status == 'OK' %}
+            <h1 class="status-ok">Documento Válido</h1>
+            <p>{{ mensagem }}</p>
+            <h3>Dados do Documento:</h3>
+            <ul>
+                {% for key, value in dados_documento.items() %}
+                    <li class="data-field"><span class="label">{{ key }}:</span> {{ value }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <h1 class="status-error">Erro na Validação</h1>
+            <p>{{ mensagem }}</p>
+        {% endif %}
+    </div>
+</body>
+</html>

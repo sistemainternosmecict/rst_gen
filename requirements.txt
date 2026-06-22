@@ -143,3 +143,5 @@ zope-event==6.2
     # via gevent
 zope-interface==8.4
     # via gevent
+supabase==2.20.0
+qrcode==8.0
