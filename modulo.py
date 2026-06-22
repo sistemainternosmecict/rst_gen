@@ -48,6 +48,11 @@ class Relatorio_servico_tecnico:
             "cargo": dados.get('cargo_solicitante', ''),
             "matricula": dados.get('matricula_solicitante', '')
         }
+        self.dados_tecnico = {
+            "nome": dados.get('nome_tecnico', ''),
+            "cargo": dados.get('cargo_tecnico', ''),
+            "matricula": dados.get('matricula_tecnico', '')
+        }
         
         self.header_image = ImageReader(self.image_path)
         self.footer_image = ImageReader(self.footer)
@@ -106,6 +111,41 @@ class Relatorio_servico_tecnico:
                 self.assinatura_img = ImageReader(img_io)
             except Exception as e:
                 print("Erro ao processar assinatura:", e)
+
+        self.assinatura_tecnico_img = None
+        if 'assinatura_tecnico' in dados and dados['assinatura_tecnico']:
+            try:
+                data = dados['assinatura_tecnico'].split(',')[1] if ',' in dados['assinatura_tecnico'] else dados['assinatura_tecnico']
+                img_data = base64.b64decode(data)
+                
+                # Carrega a imagem com PIL para colorizar a assinatura para #162E4A
+                img = PILImage.open(io.BytesIO(img_data)).convert("RGBA")
+                target_rgb = (22, 46, 74)  # Cor #162E4A em RGB
+                
+                # Modifica apenas os pixels escuros (traço da assinatura) preservando transparência
+                pixels = img.getdata()
+                new_pixels = []
+                for pixel in pixels:
+                    r, g, b, a = pixel
+                    if a == 0:
+                        new_pixels.append(pixel)
+                    else:
+                        luminosity = 0.299 * r + 0.587 * g + 0.114 * b
+                        if luminosity < 200:
+                            new_pixels.append((target_rgb[0], target_rgb[1], target_rgb[2], a))
+                        else:
+                            new_pixels.append(pixel)
+                
+                img.putdata(new_pixels)
+                
+                # Salva de volta em um stream de bytes para o ReportLab
+                img_io = io.BytesIO()
+                img.save(img_io, format="PNG")
+                img_io.seek(0)
+                
+                self.assinatura_tecnico_img = ImageReader(img_io)
+            except Exception as e:
+                print("Erro ao processar assinatura do técnico:", e)
 
         self.escrever_dados(dados)
 
@@ -360,13 +400,18 @@ class Relatorio_servico_tecnico:
         # Linhas de assinatura
         c.line(self.LEFT_MARGIN, linha_y, self.LEFT_MARGIN + largura_linha, linha_y)
         c.line(self.RIGHT_MARGIN - largura_linha, linha_y, self.RIGHT_MARGIN, linha_y)
-        c.drawCentredString(self.LEFT_MARGIN + largura_linha / 2, linha_y - 12, "Responsável Técnico")
+        info_tecnico_x = self.LEFT_MARGIN + largura_linha / 2
+        info_x = self.RIGHT_MARGIN - largura_linha / 2
+        
         c.setFont("Helvetica-Bold", 9)
-        c.drawCentredString(self.RIGHT_MARGIN - largura_linha / 2, linha_y - 12, "Responsável na Unidade")
+        c.drawCentredString(info_tecnico_x, linha_y - 12, "Responsável Técnico")
+        c.drawCentredString(info_x, linha_y - 12, "Responsável na Unidade")
+        
+        # Bloco de dados do técnico abaixo da assinatura
+        c.setFont("Helvetica", 8)
+        c.drawCentredString(info_tecnico_x, linha_y - 24, str(self.dados_tecnico.get('nome', '')))
         
         # Bloco de dados do solicitante abaixo da assinatura
-        c.setFont("Helvetica", 8)
-        info_x = self.RIGHT_MARGIN - largura_linha / 2
         c.drawCentredString(info_x, linha_y - 24, str(self.dados_solicitante.get('nome', '')))
         c.drawCentredString(info_x, linha_y - 34, str(self.dados_solicitante.get('cargo', '')))
         c.drawCentredString(info_x, linha_y - 44, f"Mat: {self.dados_solicitante.get('matricula', '')}")
@@ -378,6 +423,13 @@ class Relatorio_servico_tecnico:
             x_img = info_x - largura_assinatura / 2
             y_img = linha_y - 120  # Ajustado para manter a posição vertical boa com a escala 2x
             c.drawImage(self.assinatura_img, x_img, y_img, width=largura_assinatura, height=altura_assinatura, preserveAspectRatio=True, mask='auto')
+            
+        if self.assinatura_tecnico_img:
+            largura_assinatura = 640
+            altura_assinatura = 240
+            x_img_tecnico = info_tecnico_x - largura_assinatura / 2
+            y_img_tecnico = linha_y - 120
+            c.drawImage(self.assinatura_tecnico_img, x_img_tecnico, y_img_tecnico, width=largura_assinatura, height=altura_assinatura, preserveAspectRatio=True, mask='auto')
         
         if self.qr_code_url:
             size = 70
