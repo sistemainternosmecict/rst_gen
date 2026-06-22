@@ -13,6 +13,8 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from dotenv import load_dotenv
+from PIL import Image as PILImage
+
 
 load_dotenv()
 
@@ -75,7 +77,33 @@ class Relatorio_servico_tecnico:
             try:
                 data = dados['assinatura'].split(',')[1] if ',' in dados['assinatura'] else dados['assinatura']
                 img_data = base64.b64decode(data)
-                self.assinatura_img = ImageReader(io.BytesIO(img_data))
+                
+                # Carrega a imagem com PIL para colorizar a assinatura para #162E4A
+                img = PILImage.open(io.BytesIO(img_data)).convert("RGBA")
+                target_rgb = (22, 46, 74)  # Cor #162E4A em RGB
+                
+                # Modifica apenas os pixels escuros (traço da assinatura) preservando transparência
+                pixels = img.getdata()
+                new_pixels = []
+                for pixel in pixels:
+                    r, g, b, a = pixel
+                    if a == 0:
+                        new_pixels.append(pixel)
+                    else:
+                        luminosity = 0.299 * r + 0.587 * g + 0.114 * b
+                        if luminosity < 200:
+                            new_pixels.append((target_rgb[0], target_rgb[1], target_rgb[2], a))
+                        else:
+                            new_pixels.append(pixel)
+                
+                img.putdata(new_pixels)
+                
+                # Salva de volta em um stream de bytes para o ReportLab
+                img_io = io.BytesIO()
+                img.save(img_io, format="PNG")
+                img_io.seek(0)
+                
+                self.assinatura_img = ImageReader(img_io)
             except Exception as e:
                 print("Erro ao processar assinatura:", e)
 
@@ -324,7 +352,7 @@ class Relatorio_servico_tecnico:
         c.setFillColor(colors.black)
         c.setFont("Helvetica-Bold", 10)
         c.drawCentredString(self.PAGE_WIDTH / 2, self.current_y - 2, "Aceite do Serviço Técnico")
-        self.current_y -= 55
+        self.current_y -= 115
         c.setFont("Helvetica", 9)
         linha_y = self.current_y
         largura_linha = 180
@@ -345,9 +373,11 @@ class Relatorio_servico_tecnico:
         
         c.setFont("Helvetica", 9)
         if self.assinatura_img:
-            x_img = (self.RIGHT_MARGIN - largura_linha + 10) - 20 - 60
-            y_img = linha_y - 130 # Ajustado para acomodar as 3 linhas
-            c.drawImage(self.assinatura_img, x_img, y_img, width=320, height=180, preserveAspectRatio=True, mask='auto')
+            largura_assinatura = 640
+            altura_assinatura = 240
+            x_img = info_x - largura_assinatura / 2
+            y_img = linha_y - 120  # Ajustado para manter a posição vertical boa com a escala 2x
+            c.drawImage(self.assinatura_img, x_img, y_img, width=largura_assinatura, height=altura_assinatura, preserveAspectRatio=True, mask='auto')
         
         if self.qr_code_url:
             size = 70
