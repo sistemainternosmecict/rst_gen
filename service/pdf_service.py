@@ -67,6 +67,11 @@ class Pdf_service:
         self.cv.drawString(70, 590, dados_solicitante["rst_cargo_solicitante"])
         self.cv.drawString(480, 590, dados_solicitante["rst_matricula_solicitante"])
 
+    def escrever_observacoes(self, observacoes:dict):
+        self.cv.setFont("Helvetica", 9)
+        self.cv.drawString(30, 230, f"RST referente ao ofício {observacoes["rst_numero_oficio"]} da unidade {observacoes["rst_unidade_escolar"]} recebido dia {observacoes["rst_data_chamado"]}")
+
+
     def construir_pagina(self, template_path:str, dados_divididos:list):
         self.dados_temporarios = "temp_pdf_data.pdf"
         self.width, self.height = A4
@@ -75,6 +80,7 @@ class Pdf_service:
 
         self.escrever_informacoes_unidade(dados_divididos[0])
         self.escrever_dados_solicitante(dados_divididos[1])
+        self.escrever_observacoes(dados_divididos[5])
 
         self.cv.showPage()
         self.cv.save()
