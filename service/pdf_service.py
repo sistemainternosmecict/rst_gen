@@ -9,7 +9,8 @@ class Pdf_service:
         data_atual = datetime.now().strftime("%d-%m-%Y")
         template_path = os.getenv("TEMPLATE_PATH", "")
         dados_divididos = self.dividir_dados(dados_doc)
-        self.pdf_output_path = f'rst/RST_{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf'
+        #self.pdf_output_path = f'rst/RST_{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf'
+        self.pdf_output_path = f'rst/RST.pdf'
         self.construir_pagina(template_path, dados_divididos)
         self.salvar_pdf()
 
@@ -25,7 +26,6 @@ class Pdf_service:
             "rst_nome_solicitante": dados_doc.rst_nome_solicitante,
             "rst_cargo_solicitante": dados_doc.rst_cargo_solicitante,
             "rst_matricula_solicitante":dados_doc.rst_matricula_solicitante,
-            "rst_data_chamado":dados_doc.rst_data_chamado
         }
 
         self.dados_tecnico = {
@@ -37,7 +37,9 @@ class Pdf_service:
         self.procedimentos = dados_doc.rst_procedimentos
         self.observacoes = {
             "rst_observacoes":dados_doc.rst_observacoes,
-            "rst_numero_oficio": dados_doc.rst_numero_oficio
+            "rst_numero_oficio": dados_doc.rst_numero_oficio,
+            "rst_data_chamado":dados_doc.rst_data_chamado,
+            "rst_unidade_escolar": dados_doc.rst_unidade_escolar,
         }
 
         self.dados_assinaturas = {
@@ -60,6 +62,11 @@ class Pdf_service:
         self.cv.drawString(70, 660, dados_unidade["rst_bairro"])
         self.cv.drawString(370, 660, dados_unidade["rst_distrito"])
 
+    def escrever_dados_solicitante(self, dados_solicitante:dict):
+        self.cv.drawString(140, 612, dados_solicitante["rst_nome_solicitante"])
+        self.cv.drawString(70, 590, dados_solicitante["rst_cargo_solicitante"])
+        self.cv.drawString(480, 590, dados_solicitante["rst_matricula_solicitante"])
+
     def construir_pagina(self, template_path:str, dados_divididos:list):
         self.dados_temporarios = "temp_pdf_data.pdf"
         self.width, self.height = A4
@@ -67,6 +74,7 @@ class Pdf_service:
         self.cv = canvas.Canvas(self.dados_temporarios, pagesize=A4)
 
         self.escrever_informacoes_unidade(dados_divididos[0])
+        self.escrever_dados_solicitante(dados_divididos[1])
 
         self.cv.showPage()
         self.cv.save()
