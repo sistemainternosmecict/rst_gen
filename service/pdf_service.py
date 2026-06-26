@@ -1,4 +1,7 @@
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.platypus import Paragraph, Frame
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.enums import TA_LEFT
 from reportlab.pdfgen import canvas
 from pypdf import PdfReader, PdfWriter
 from datetime import datetime
@@ -90,12 +93,14 @@ class Pdf_service:
             if causa in MAPA_COORDENADAS_CAUSAS:
                 x, y = MAPA_COORDENADAS_CAUSAS[causa]
                 self.cv.drawCentredString(x, y, "X")
-        print(causas)
+
+    def escrever_procedimentos_realizados(self, procedimentos:str):
+        self._escrever_paragrafo_contido(procedimentos)
 
     def escrever_observacoes(self, observacoes:dict):
         self.cv.setFont("Helvetica", 9)
         self.cv.drawString(30, 230, f"RST referente ao ofício {observacoes["rst_numero_oficio"]} da unidade {observacoes["rst_unidade_escolar"]} recebido dia {observacoes["rst_data_chamado"]}")
-
+        self._escrever_paragrafo_contido(observacoes["rst_observacoes"], 215, 220)
 
     def construir_pagina(self, template_path:str, dados_divididos:list):
         self.dados_temporarios = "temp_pdf_data.pdf"
@@ -107,6 +112,7 @@ class Pdf_service:
         self.escrever_dados_solicitante(dados_divididos[1])
         self.escrever_dados_tecnico(dados_divididos[2])
         self.escrever_causas_problemas_tecnicos_relacionados(dados_divididos[3])
+        self.escrever_procedimentos_realizados(dados_divididos[4])
         self.escrever_observacoes(dados_divididos[5])
 
         self.cv.showPage()
@@ -128,6 +134,45 @@ class Pdf_service:
 
         if os.path.exists(self.dados_temporarios):
             os.remove(self.dados_temporarios)
+
+    def _escrever_paragrafo_contido(self, texto: str, y:int = 315, limite:int = 330):
+        paragrafo_x = 30
+        paragrafo_y = y
+        paragrafo_largura = 535
+        paragrafo_altura = 70
+        paragrafo_tamanho_fonte = 10
+        paragrafo_espacamento_linha = 16
+        paragrafo_limite_caracteres = limite 
+        paragrafo_debug = False
+
+        if len(texto) > paragrafo_limite_caracteres:
+            texto = texto[:paragrafo_limite_caracteres] + "..."
+
+        if paragrafo_debug:
+            self.cv.saveState()
+            self.cv.setStrokeColorRGB(1, 0, 0)  # Vermelho para debug
+            self.cv.setLineWidth(0.5)
+            self.cv.rect(paragrafo_x, paragrafo_y, paragrafo_largura, paragrafo_altura, stroke=1, fill=0)
+            self.cv.restoreState()
+        print(texto)
+
+        estilo_customizado = ParagraphStyle(
+            name="EstiloDinamico",
+            fontName="Helvetica",
+            fontSize=paragrafo_tamanho_fonte,
+            leading=paragrafo_espacamento_linha,  # Controla o espaçamento vertical
+            alignment=TA_LEFT           # Alinhamento do texto
+        )
+
+        p = Paragraph(texto, estilo_customizado)
+
+        frame = Frame(
+            paragrafo_x, paragrafo_y, paragrafo_largura, paragrafo_altura,
+            leftPadding=2, rightPadding=2, topPadding=2, bottomPadding=2,
+            id='frame_paragrafo'
+        )
+
+        frame.addFromList([p], self.cv)
 
     def _gerar_sufixo_aleatorio(bytes_aleatorios: int = 8) -> str:
         return secrets.token_urlsafe(9).lower()
