@@ -4,6 +4,19 @@ from pypdf import PdfReader, PdfWriter
 from datetime import datetime
 import os, secrets
 
+MAPA_COORDENADAS_CAUSAS = {
+    "Configuração de sistema": (39, 488),
+    "Entrega de equipamentos": (39, 473),
+    "Substituição de equipamentos": (39, 458),
+    "Garantia de equipamentos": (39, 443),
+    "Vistoria de equipamentos": (39, 428),
+    "Remoção de equipamentos": (230, 488),
+    "Rede e Internet": (230, 473),
+    "Backup de arquivos": (230, 458),
+    "Avaliação de Carência": (230, 443),
+    "Outros": (230, 428),
+}
+
 class Pdf_service:
     def construir_documento(self, dados_doc:dict):
         data_atual = datetime.now().strftime("%d-%m-%Y")
@@ -67,6 +80,18 @@ class Pdf_service:
         self.cv.drawString(70, 590, dados_solicitante["rst_cargo_solicitante"])
         self.cv.drawString(480, 590, dados_solicitante["rst_matricula_solicitante"])
 
+    def escrever_dados_tecnico(self, dados_tecnico:dict):
+        self.cv.drawString(120, 542, dados_tecnico["rst_nome_tecnico"])
+        self.cv.drawString(470, 542, dados_tecnico["rst_data_atendimento"])
+
+    def escrever_causas_problemas_tecnicos_relacionados(self, causas:list):
+        self.cv.setFont("Helvetica-Bold", 12)
+        for causa in causas:
+            if causa in MAPA_COORDENADAS_CAUSAS:
+                x, y = MAPA_COORDENADAS_CAUSAS[causa]
+                self.cv.drawCentredString(x, y, "X")
+        print(causas)
+
     def escrever_observacoes(self, observacoes:dict):
         self.cv.setFont("Helvetica", 9)
         self.cv.drawString(30, 230, f"RST referente ao ofício {observacoes["rst_numero_oficio"]} da unidade {observacoes["rst_unidade_escolar"]} recebido dia {observacoes["rst_data_chamado"]}")
@@ -80,6 +105,8 @@ class Pdf_service:
 
         self.escrever_informacoes_unidade(dados_divididos[0])
         self.escrever_dados_solicitante(dados_divididos[1])
+        self.escrever_dados_tecnico(dados_divididos[2])
+        self.escrever_causas_problemas_tecnicos_relacionados(dados_divididos[3])
         self.escrever_observacoes(dados_divididos[5])
 
         self.cv.showPage()
@@ -91,8 +118,8 @@ class Pdf_service:
 
         pagina_template = reader_template.pages[0]
         pagina_temporaria = reader_temporario.pages[0]
-
         pagina_template.merge_page(pagina_temporaria)
+
         self.writer.add_page(pagina_template)
 
     def salvar_pdf(self):
