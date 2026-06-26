@@ -8,35 +8,12 @@ class Pdf_service:
     def construir_documento(self, dados_doc:dict):
         data_atual = datetime.now().strftime("%d-%m-%Y")
         template_path = os.getenv("TEMPLATE_PATH", "")
-        pdf_output_path = f'rst/RST_{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf'
-        self.dividir_dados(dados_doc)
-        self.construir_pagina(template_path, pdf_output_path)
+        dados_divididos = self.dividir_dados(dados_doc)
+        self.pdf_output_path = f'rst/RST_{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf'
+        self.construir_pagina(template_path, dados_divididos)
+        self.salvar_pdf()
 
-    def construir_pagina(self, template_path:str, output_path:str):
-        dados_temporarios = "temp_pdf_data.pdf"
-        self.width, self.height = A4
-
-        self.cv = canvas.Canvas(dados_temporarios, pagesize=A4)
-        self.cv.showPage()
-        self.cv.save()
-
-        reader_template = PdfReader(template_path)
-        reader_temporario = PdfReader(dados_temporarios)
-        writer = PdfWriter()
-
-        pagina_template = reader_template.pages[0]
-        pagina_temporaria = reader_temporario.pages[0]
-
-        pagina_template.merge_page(pagina_temporaria)
-        writer.add_page(pagina_template)
-
-        with open(output_path, "wb") as f:
-            writer.write(f)
-
-        if os.path.exists(dados_temporarios):
-            os.remove(dados_temporarios)
-
-    def dividir_dados(self, dados_doc:dict):
+    def dividir_dados(self, dados_doc:dict)->list:
         self.dados_unidade = {
             "rst_unidade_escolar": dados_doc.rst_unidade_escolar,
             "rst_email_unidade": dados_doc.rst_email_unidade,
@@ -68,7 +45,48 @@ class Pdf_service:
             "rst_assinatura_tecnico": dados_doc.rst_assinatura_tecnico
         }
 
-        print(self.dados_unidade, self.dados_solicitante, self.dados_tecnico, self.causas, self.procedimentos, self.observacoes, self.dados_assinaturas)
+        return [
+            self.dados_unidade,
+            self.dados_solicitante,
+            self.dados_tecnico,
+            self.causas,
+            self.procedimentos,
+            self.observacoes,
+            self.dados_assinaturas
+        ]
+
+    def escrever_informacoes_unidade(self, dados_unidade:dict):
+        self.cv.drawString(120, 681, dados_unidade["rst_unidade_escolar"])
+        self.cv.drawString(70, 660, dados_unidade["rst_bairro"])
+        self.cv.drawString(370, 660, dados_unidade["rst_distrito"])
+
+    def construir_pagina(self, template_path:str, dados_divididos:list):
+        self.dados_temporarios = "temp_pdf_data.pdf"
+        self.width, self.height = A4
+
+        self.cv = canvas.Canvas(self.dados_temporarios, pagesize=A4)
+
+        self.escrever_informacoes_unidade(dados_divididos[0])
+
+        self.cv.showPage()
+        self.cv.save()
+
+        reader_template = PdfReader(template_path)
+        reader_temporario = PdfReader(self.dados_temporarios)
+        self.writer = PdfWriter()
+
+        pagina_template = reader_template.pages[0]
+        pagina_temporaria = reader_temporario.pages[0]
+
+        pagina_template.merge_page(pagina_temporaria)
+        self.writer.add_page(pagina_template)
+
+    def salvar_pdf(self):
+        with open(self.pdf_output_path, "wb") as f:
+            self.writer.write(f)
+
+        if os.path.exists(self.dados_temporarios):
+            os.remove(self.dados_temporarios)
 
     def _gerar_sufixo_aleatorio(bytes_aleatorios: int = 8) -> str:
         return secrets.token_urlsafe(9).lower()
