@@ -2,10 +2,12 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph, Frame
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.units import cm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from pypdf import PdfReader, PdfWriter
 from datetime import datetime
-import os, secrets
+import os, secrets, qrcode, io
 
 MAPA_COORDENADAS_CAUSAS = {
     "Configuração de sistema": (39, 488),
@@ -21,13 +23,14 @@ MAPA_COORDENADAS_CAUSAS = {
 }
 
 class Pdf_service:
-    def construir_documento(self, dados_doc:dict):
+    def construir_documento(self, dados_doc:dict, rst_doc_hash:str):
         data_atual = datetime.now().strftime("%d-%m-%Y")
         template_path = os.getenv("TEMPLATE_PATH", "")
         dados_divididos = self.dividir_dados(dados_doc)
-        #self.pdf_output_path = f'rst/RST_{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf'
-        self.pdf_output_path = f'rst/RST.pdf'
-        self.construir_pagina(template_path, dados_divididos)
+        #self.pdf_output_path = f'{os.getenv("LOCAL_PDF_DIR", "")}/RST_{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf'
+        self.pdf_output_path = f'{os.getenv("LOCAL_PDF_DIR", "")}/RST.pdf'
+        url_para_validacao = self._criar_link_para_verificacao_validade(rst_doc_hash)
+        self.construir_pagina(template_path, dados_divididos, url_para_validacao)
         self.salvar_pdf()
 
     def dividir_dados(self, dados_doc:dict)->list:
@@ -74,7 +77,7 @@ class Pdf_service:
         ]
 
     def escrever_informacoes_unidade(self, dados_unidade:dict):
-        self.cv.drawString(120, 681, dados_unidade["rst_unidade_escolar"])
+        self.cv.drawString(120, 682, dados_unidade["rst_unidade_escolar"])
         self.cv.drawString(70, 660, dados_unidade["rst_bairro"])
         self.cv.drawString(370, 660, dados_unidade["rst_distrito"])
 
@@ -99,10 +102,22 @@ class Pdf_service:
 
     def escrever_observacoes(self, observacoes:dict):
         self.cv.setFont("Helvetica", 9)
-        self.cv.drawString(30, 230, f"RST referente ao ofício {observacoes["rst_numero_oficio"]} da unidade {observacoes["rst_unidade_escolar"]} recebido dia {observacoes["rst_data_chamado"]}")
-        self._escrever_paragrafo_contido(observacoes["rst_observacoes"], 215, 220)
+        self._escrever_paragrafo_contido(observacoes["rst_observacoes"], 240, 220)
+        self.cv.setFont("Helvetica-Bold", 9)
+        self.cv.drawString(30, 260, f"RST referente ao ofício {observacoes["rst_numero_oficio"]} da unidade {observacoes["rst_unidade_escolar"]} recebido dia {observacoes["rst_data_chamado"]}")
 
-    def construir_pagina(self, template_path:str, dados_divididos:list):
+    def escrever_assinaturas(self):
+        pass
+
+    def escrever_link_para_validacao(self, url_para_validacao:str):
+        self.cv.setFont("Helvetica", 9)
+        instrucoes = f"Leia o qr code ou acesse o seguinte link para validar o documento."
+        x = 24
+        y = 2.8 * cm
+        self.cv.drawString(x, y, instrucoes)
+        self.cv.drawString(x, y - 10, url_para_validacao)
+
+    def construir_pagina(self, template_path:str, dados_divididos:list, url_para_validacao:str):
         self.dados_temporarios = "temp_pdf_data.pdf"
         self.width, self.height = A4
 
@@ -114,6 +129,8 @@ class Pdf_service:
         self.escrever_causas_problemas_tecnicos_relacionados(dados_divididos[3])
         self.escrever_procedimentos_realizados(dados_divididos[4])
         self.escrever_observacoes(dados_divididos[5])
+        self.escrever_link_para_validacao(url_para_validacao)
+        self._criar_qr_code(url_para_validacao)
 
         self.cv.showPage()
         self.cv.save()
@@ -142,7 +159,7 @@ class Pdf_service:
         paragrafo_altura = 70
         paragrafo_tamanho_fonte = 10
         paragrafo_espacamento_linha = 16
-        paragrafo_limite_caracteres = limite 
+        paragrafo_limite_caracteres = limite
         paragrafo_debug = False
 
         if len(texto) > paragrafo_limite_caracteres:
@@ -154,7 +171,6 @@ class Pdf_service:
             self.cv.setLineWidth(0.5)
             self.cv.rect(paragrafo_x, paragrafo_y, paragrafo_largura, paragrafo_altura, stroke=1, fill=0)
             self.cv.restoreState()
-        print(texto)
 
         estilo_customizado = ParagraphStyle(
             name="EstiloDinamico",
@@ -173,6 +189,29 @@ class Pdf_service:
         )
 
         frame.addFromList([p], self.cv)
+    
+    def _criar_qr_code(self, url_validacao:str):
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=1,
+        )
+        qr.add_data(url_validacao)
+        qr.make(fit=True)
 
-    def _gerar_sufixo_aleatorio(bytes_aleatorios: int = 8) -> str:
+        img_qr = qr.make_image(fill_color="black", back_color="white")
+        buffer = io.BytesIO()
+        img_qr.save(buffer, format="PNG")
+        buffer.seek(0)
+
+        tamanho_qr = 2.2 * cm
+
+        reader = ImageReader(buffer)
+        self.cv.drawImage(reader, (self.width / 2) - (tamanho_qr / 2), 2, width=tamanho_qr, height=tamanho_qr)
+
+    def _criar_link_para_verificacao_validade(self, rst_doc_hash:str):
+        return f"{os.getenv("URL_BASE")}/validar_documento_por_hash/{rst_doc_hash}"
+
+    def _gerar_sufixo_aleatorio(self, bytes_aleatorios: int = 8) -> str:
         return secrets.token_urlsafe(9).lower()
