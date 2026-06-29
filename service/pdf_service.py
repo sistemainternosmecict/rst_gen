@@ -4,10 +4,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
+from reportlab.lib.colors import HexColor
 from reportlab.pdfgen import canvas
 from pypdf import PdfReader, PdfWriter
 from datetime import datetime
-import os, secrets, qrcode, io
+from PIL import Image, ImageOps
+import os, secrets, qrcode, io, base64
 
 MAPA_COORDENADAS_CAUSAS = {
     "Configuração de sistema": (39, 488),
@@ -63,7 +65,11 @@ class Pdf_service:
 
         self.dados_assinaturas = {
             "rst_assinatura_solicitante": dados_doc.rst_assinatura_solicitante,
-            "rst_assinatura_tecnico": dados_doc.rst_assinatura_tecnico
+            "rst_assinatura_tecnico": dados_doc.rst_assinatura_tecnico,
+            "rst_nome_solicitante": dados_doc.rst_nome_solicitante,
+            "rst_cargo_solicitante": dados_doc.rst_cargo_solicitante,
+            "rst_matricula_solicitante":dados_doc.rst_matricula_solicitante,
+            "rst_nome_tecnico": dados_doc.rst_nome_tecnico
         }
 
         return [
@@ -106,8 +112,69 @@ class Pdf_service:
         self.cv.setFont("Helvetica-Bold", 9)
         self.cv.drawString(30, 260, f"RST referente ao ofício {observacoes["rst_numero_oficio"]} da unidade {observacoes["rst_unidade_escolar"]} recebido dia {observacoes["rst_data_chamado"]}")
 
-    def escrever_assinaturas(self):
-        pass
+    def escrever_assinaturas(self, dados_assinaturas:dict):
+        largura_assinatura = 5 * cm
+        altura_assinatura = 4 * cm
+        posicao_y = 4.2 * cm
+
+        posicao_x_esquerda = 3.0 * cm
+        posicao_x_direita = 21.0 * cm - 3.0 * cm - largura_assinatura # 21cm é a largura total do A4
+
+        self.cv.drawCentredString(posicao_x_direita + (largura_assinatura / 2), altura_assinatura + 50, dados_assinaturas["rst_nome_solicitante"])
+        self.cv.drawCentredString(posicao_x_direita + (largura_assinatura / 2), altura_assinatura + 40, dados_assinaturas["rst_cargo_solicitante"])
+        self.cv.drawCentredString(posicao_x_direita + (largura_assinatura / 2), altura_assinatura + 30, dados_assinaturas["rst_matricula_solicitante"])
+        self.cv.drawCentredString(posicao_x_esquerda + (largura_assinatura / 2), altura_assinatura + 50, dados_assinaturas["rst_nome_tecnico"])
+
+        def transformar_imagem_em_azul(base64_str):
+            if "," in base64_str:
+                base64_str = base64_str.split(",")[1]
+
+            bytes_img = base64.b64decode(base64_str)
+            img_pil = Image.open(io.BytesIO(bytes_img)).convert("RGBA")
+
+            r, g, b, a = img_pil.split()
+            azul_solido = Image.new("RGBA", img_pil.size, (0, 0, 255, 255))
+
+            cinza = ImageOps.grayscale(img_pil)
+            mascara_traço = ImageOps.invert(cinza)
+            img_azul = Image.composite(azul_solido, img_pil, mascara_traço)
+            img_final = Image.merge("RGBA", (img_azul.split()[0], img_azul.split()[1], img_azul.split()[2], a))
+
+            buffer_final = io.BytesIO()
+            img_final.save(buffer_final, format="PNG")
+            buffer_final.seek(0)
+
+            return ImageReader(buffer_final)
+
+        base64_solicitante = dados_assinaturas.get("rst_assinatura_solicitante")
+        if base64_solicitante:
+            try:
+                img_solicitante = transformar_imagem_em_azul(base64_solicitante) 
+                self.cv.drawImage(
+                    img_solicitante,
+                    posicao_x_direita,
+                    posicao_y,
+                    width=largura_assinatura,
+                    height=altura_assinatura,
+                    mask='auto'
+                )
+            except Exception as e:
+                print(f"Erro ao processar assinatura do solicitante: {e}")
+
+        base64_tecnico = dados_assinaturas.get("rst_assinatura_tecnico")
+        if base64_tecnico:
+            try:
+                img_tecnico = transformar_imagem_em_azul(base64_tecnico) 
+                self.cv.drawImage(
+                    img_tecnico,
+                    posicao_x_esquerda,
+                    posicao_y,
+                    width=largura_assinatura,
+                    height=altura_assinatura,
+                    mask='auto'
+            )
+            except Exception as e:
+                print(f"Erro ao processar assinatura do técnico: {e}")
 
     def escrever_link_para_validacao(self, url_para_validacao:str):
         self.cv.setFont("Helvetica", 9)
@@ -129,6 +196,7 @@ class Pdf_service:
         self.escrever_causas_problemas_tecnicos_relacionados(dados_divididos[3])
         self.escrever_procedimentos_realizados(dados_divididos[4])
         self.escrever_observacoes(dados_divididos[5])
+        self.escrever_assinaturas(dados_divididos[6])
         self.escrever_link_para_validacao(url_para_validacao)
         self._criar_qr_code(url_para_validacao)
 
