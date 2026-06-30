@@ -19,6 +19,7 @@ class RSTCreate(BaseModel):
     rst_assinatura_solicitante: str
     rst_assinatura_tecnico: str
     rst_task_id: str
+    rst_user_id: str
 
     class Config:
         json_schema_extra = {
@@ -39,7 +40,8 @@ class RSTCreate(BaseModel):
                 "rst_causas": ["Garantia de equipamentos", "Configuração de sistema"],
                 "rst_assinatura_solicitante": "teste",
                 "rst_assinatura_tecnico": "thyez",
-                "rst_task_id": "id da task"
+                "rst_task_id": "id da task",
+                "rst_user_id": "id do usuario logado no taskflow"
             }
         }
 

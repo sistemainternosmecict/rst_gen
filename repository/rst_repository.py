@@ -14,7 +14,6 @@ class Rst_repository:
         self.supabase: Client = create_client(self.url, self.key)
 
     def registrar_novo_documento_banco(self, payload_completo:dict):
-        print(payload_completo)
         dict_payload = payload_completo.dict()
         try:
             resposta = self.supabase.table("tb_rst_docs").insert(dict_payload).execute()
