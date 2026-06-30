@@ -26,14 +26,14 @@ MAPA_COORDENADAS_CAUSAS = {
 
 class Pdf_service:
     def construir_documento(self, dados_doc:dict, rst_doc_hash:str):
-        data_atual = datetime.now().strftime("%d-%m-%Y")
+        data_atual = datetime.now().strftime("%d%m%Y")
         template_path = os.getenv("TEMPLATE_PATH", "")
         dados_divididos = self.dividir_dados(dados_doc)
-        #self.pdf_output_path = f'{os.getenv("LOCAL_PDF_DIR", "")}/RST_{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf'
-        self.pdf_output_path = f'{os.getenv("LOCAL_PDF_DIR", "")}/RST.pdf'
+        self.pdf_output_path = f'{os.getenv("LOCAL_PDF_DIR", "")}/RST{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf'
         url_para_validacao = self._criar_link_para_verificacao_validade(rst_doc_hash)
         self.construir_pagina(template_path, dados_divididos, url_para_validacao)
         self.salvar_pdf()
+        return self.pdf_output_path
 
     def dividir_dados(self, dados_doc:dict)->list:
         self.dados_unidade = {
@@ -109,7 +109,7 @@ class Pdf_service:
     def escrever_observacoes(self, observacoes:dict):
         self.cv.setFont("Helvetica", 9)
         self._escrever_paragrafo_contido(observacoes["rst_observacoes"], 240, 220)
-        self.cv.setFont("Helvetica-Bold", 9)
+        self.cv.setFont("Helvetica-Bold", 7)
         self.cv.drawString(30, 260, f"RST referente ao ofício {observacoes["rst_numero_oficio"]} da unidade {observacoes["rst_unidade_escolar"]} recebido dia {observacoes["rst_data_chamado"]}")
 
     def escrever_assinaturas(self, dados_assinaturas:dict):

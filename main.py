@@ -11,7 +11,7 @@ app = FastAPI()
 cors_origins_raw = os.getenv("CORS_ORIGINS", "")
 origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
 if not origins:
-    origins = ["http://localhost:8080", "http://192.168.100.215:8080"]
+    origins = ["http://localhost", "http://192.168.100.215:8080", "http://192.168.100.215", "http://localhost:8080"]
 
 app.add_middleware(
     CORSMiddleware,
