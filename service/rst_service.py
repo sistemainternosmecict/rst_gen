@@ -1,8 +1,5 @@
-from service.ferramentas import Ferramentas
-
+from repository.rst_repository import Rst_repository
 class Rst_service:
-    def registrar_documento(dados_doc:dict):
-        ferramentas = Ferramentas()
-        rst_doc_hash = ferramentas.calcular_hash_documento(dados_doc)
-
-        return rst_doc_hash
+    def registrar_documento(self, payload_completo:dict):
+        rst_repo = Rst_repository()
+        rst_repo.registrar_novo_documento_banco(payload_completo)
