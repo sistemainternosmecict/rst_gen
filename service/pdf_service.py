@@ -31,7 +31,7 @@ class Pdf_service:
         dados_divididos = self.dividir_dados(dados_doc)
         diretorio_pdf = os.getenv("LOCAL_PDF_DIR", "")
         if diretorio_pdf and not os.path.exists(diretorio_pdf):
-            os makedirs(diretorio_pdf, exist_ok=True)
+            os.makedirs(diretorio_pdf, exist_ok=True)
         self.pdf_output_path = os.path.join(diretorio_pdf, f'RST{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf')
         url_para_validacao = self._criar_link_para_verificacao_validade(rst_doc_hash)
         self.construir_pagina(template_path, dados_divididos, url_para_validacao)
