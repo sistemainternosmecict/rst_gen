@@ -18,8 +18,11 @@ class Orquestrador:
         diretorio_pdf = os.getenv("LOCAL_PDF_DIR", "")
         if diretorio_pdf and os.path.exists(diretorio_pdf):
             caminho_documento = pdfS.construir_documento(dados_doc, rst_doc_hash)
+            print("CAMINHO", caminho_documento)
             filename_split = caminho_documento.split("/")
+            print("FILENAME_SPLIT", filename_split)
             filename = filename_split[2]
+            print("FILENAME", filename)
             drive_id_pasta = os.getenv("GDRIVE_DIR_ID")
             drive_s = Drive_service()
             link_arquivo_drive = drive_s.salvar_arquivo_drive(caminho_documento, drive_id_pasta)
