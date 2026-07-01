@@ -279,7 +279,7 @@ class Pdf_service:
         self.cv.drawImage(reader, (self.width / 2) - (tamanho_qr / 2), 2, width=tamanho_qr, height=tamanho_qr)
 
     def _criar_link_para_verificacao_validade(self, rst_doc_hash:str):
-        return f"{os.getenv("URL_BASE")}/validar_documento_por_hash/{rst_doc_hash}"
+        return f"{os.getenv("URL_BASE")}/api/v1/validar_documento_por_hash/{rst_doc_hash}"
 
     def _gerar_sufixo_aleatorio(self, bytes_aleatorios: int = 8) -> str:
         return secrets.token_urlsafe(9).lower()

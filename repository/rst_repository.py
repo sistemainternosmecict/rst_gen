@@ -26,3 +26,21 @@ class Rst_repository:
         except Exception as e:
             print(f"Erro crítico ao persistir dados na tabela tb_rst_docs: {e}")
             raise e
+
+    def obter_dados_documento(self, hash:str):
+        try:
+            resposta = self.supabase.table("tb_rst_docs")\
+                .select("*")\
+                .eq("rst_doc_hash", hash)\
+                .execute()
+
+            if resposta.data:
+                print(f"Sucesso: Registro encontrado para o hash {hash}")
+                return resposta.data[0] # Retorna o primeiro elemento (dict puro)
+
+            print(f"Aviso: Nenhum registro encontrado para o hash {hash}")
+            return {}
+
+        except Exception as e:
+            print(f"Erro ao buscar dados por hash na tabela tb_rst_docs: {e}")
+            raise e

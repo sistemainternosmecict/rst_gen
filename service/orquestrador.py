@@ -41,3 +41,8 @@ class Orquestrador:
             "rst_doc_hash":rst_doc_hash
         }
         return resposta_orquestrador
+
+    def validar_documento_por_hash(self, hash:str)->dict:
+        rstS = Rst_service()
+        doc_dict = rstS.obter_documento_dados(hash)
+        return doc_dict

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Serviço Técnico (RST)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            color: #333;
+            background-color: #f4f6f9;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        /* Cabeçalho principal */
+        .header-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 3px solid #0056b3;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .logo-img {
+            max-width: 180px;
+            height: auto;
+        }
+        .header-text h1 {
+            color: #0056b3;
+            margin: 0;
+            font-size: 22px;
+        }
+        .header-text p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Agrupamentos em Blocos (Cards) */
+        .secao-bloco {
+            background-color: #fff;
+            border: 1px solid #eaedf1;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .secao-titulo {
+            font-size: 16px;
+            color: #0056b3;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eaedf1;
+            padding-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* Grid de Informações */
+        .grid-campos {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .campo {
+            font-size: 14.5px;
+            line-height: 1.4;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            font-size: 12.5px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .valor {
+            color: #111;
+        }
+
+        /* Caixas de Texto Longo */
+        .caixa-texto {
+            background: #f9f9f9;
+            padding: 12px;
+            border-left: 4px solid #0056b3;
+            border-radius: 0 4px 4px 0;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+            white-space: pre-line; /* Preserva parágrafos */
+        }
+
+        /* Container de Causas Padronizadas (Badges) */
+        .causas-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+        }
+        .causa-badge {
+            background-color: #ebf3fc;
+            color: #0056b3;
+            border: 1px solid #d2e5f9;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+        }
+        .causa-badge::before {
+            content: "⚠️ ";
+            margin-right: 4px;
+            font-size: 11px;
+        }
+
+        /* Rodapé de Autenticidade */
+        .hash-footer {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            word-break: break-all;
+        }
+
+        /* --- Responsividade para Celulares (Telas até 600px) --- */
+        @media (max-width: 600px) {
+            body {
+                padding: 8px;
+            }
+            .container {
+                padding: 12px;
+                border-radius: 4px;
+            }
+            .header-container {
+                flex-direction: column;
+                text-align: center;
+                gap: 12px;
+            }
+            .logo-img {
+                max-width: 240px;
+            }
+            .header-text h1 {
+                font-size: 19px;
+            }
+            .grid-campos {
+                grid-template-columns: 1fr; /* 1 Coluna no celular */
+                gap: 10px;
+            }
+            .secao-bloco {
+                padding: 12px;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="header-container">
+            <img class="logo-img" src="{{ url_for('static', path='logo.png') }}" alt="Logo da Secretaria de Educação">
+            <div class="header-text">
+                <h1>Relatório Técnico</h1>
+                <p>Ofício Nº: <strong>{{ documento.rst_numero_oficio }}</strong></p>
+            </div>
+        </div>
+
+        <div class="secao-bloco">
+            <div class="secao-titulo">Datas do Atendimento</div>
+            <div class="grid-campos">
+                <div class="campo">
+                    <span class="label">Data do Chamado</span>
+                    <span class="valor">{{ documento.rst_data_chamado }}</span>
+                </div>
+                <div class="campo">
+                    <span class="label">Data do Atendimento</span>
+                    <span class="valor">{{ documento.rst_data_atendimento }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="secao-bloco">
+            <div class="secao-titulo">Dados da Unidade Escolar</div>
+            <div class="grid-campos">
+                <div class="campo" style="grid-column: span 2;">
+                    <span class="label">Unidade Escolar</span>
+                    <span class="valor"><strong>{{ documento.rst_unidade_escolar }}</strong></span>
+                </div>
+                <div class="campo">
+                    <span class="label">Bairro</span>
+                    <span class="valor">{{ documento.rst_bairro }}</span>
+                </div>
+                <div class="campo">
+                    <span class="label">Distrito</span>
+                    <span class="valor">{{ documento.rst_distrito }}</span>
+                </div>
+                <div class="campo" style="grid-column: span 2;">
+                    <span class="label">E-mail da Unidade</span>
+                    <span class="valor" style="font-size: 8pt">{{ documento.rst_email_unidade }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="secao-bloco">
+            <div class="secao-titulo">Responsáveis</div>
+            <div class="grid-campos">
+                <div class="campo">
+                    <span class="label">Nome do Solicitante</span>
+                    <span class="valor">{{ documento.rst_nome_solicitante }}</span>
+                </div>
+                <div class="campo">
+                    <span class="label">Cargo do Solicitante</span>
+                    <span class="valor">{{ documento.rst_cargo_solicitante }}</span>
+                </div>
+                <div class="campo">
+                    <span class="label">Matrícula Solicitante</span>
+                    <span class="valor">{{ documento.rst_matricula_solicitante }}</span>
+                </div>
+                <div class="campo">
+                    <span class="label">Técnico Responsável</span>
+                    <span class="valor">{{ documento.rst_nome_tecnico }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="secao-bloco">
+            <div class="secao-titulo">Laudo Técnico</div>
+
+            <span class="label">Procedimentos Realizados</span>
+            <div class="caixa-texto">
+                {{ documento.rst_procedimentos }}
+            </div>
+
+            {% if documento.rst_causas %}
+                <span class="label" style="margin-top: 15px;">Causas Identificadas</span>
+                <div class="causas-container">
+                {% if documento.rst_causas is iterable and documento.rst_causas is not string %}
+                    {% for causa in documento.rst_causas %}
+                        <span class="causa-badge">{{ causa }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="causa-badge">{{ documento.rst_causas }}</span>
+                {% endif %}
+                </div>
+            {% endif %}
+
+            {% if documento.rst_observacoes %}
+                <span class="label" style="margin-top: 15px;">Observações Adicionais</span>
+                <div class="caixa-texto" style="border-left-color: #ffc107;">
+                    {{ documento.rst_observacoes }}
+                </div>
+            {% endif %}
+        </div>
+
+        <p class="hash-footer">
+            <strong>ID do Registro:</strong> {{ documento.id }}<br>
+            <strong>Task ID Associado:</strong> {{ documento.rst_task_id }}<br><br>
+            CÓDIGO DE VERIFICAÇÃO HASH (SHA-256):<br>
+            <strong>{{ documento.rst_doc_hash }}</strong>
+        </p>
+    </div>
+</body>
+</html>
