@@ -12,7 +12,15 @@ app = FastAPI()
 cors_origins_raw = os.getenv("CORS_ORIGINS", "")
 origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
 if not origins:
-    origins = ["http://localhost",  "http://localhost:8080/boards", "localhost",  "http://127.0.0.1", "http://192.168.100.215:8080", "http://192.168.100.215", "http://localhost:8080", "https://taskflow-frontend-pqok.onrender.com", "https://taskflow-frontend-pqok.onrender.com/boards", "https://taskflow-frontend-pqok.onrender.com/dashboard", "https://taskflow-frontend-pqok.onrender.com/cronograma"]
+    origins = [
+        "http://localhost",  
+        "http://localhost:8080", 
+        "localhost",  
+        "http://127.0.0.1", 
+        "http://192.168.100.215:8080", 
+        "http://192.168.100.215", 
+        "https://taskflow-frontend-pqok.onrender.com" 
+       ]
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
