@@ -45,3 +45,6 @@ class Drive_repository:
         except Exception as error:
             print(f"Ocorreu um erro ao fazer upload para o Google Drive: {error}")
             raise error
+
+    def obter_service(self):
+        return self.service
