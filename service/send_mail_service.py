@@ -12,7 +12,7 @@ load_dotenv()
 class Send_mail_service:
     def __init__(self):
         self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", 587))
+        self.smtp_port = int(os.getenv("SMTP_PORT", 465))
         self.smtp_user = os.getenv("SMTP_USER")
         self.smtp_password = os.getenv("SMTP_PASSWORD")
         self.drive_repo = Drive_repository()
@@ -82,8 +82,8 @@ class Send_mail_service:
         try:
             bytes_pdf = self._criar_copia_do_documento(link_arquivo_drive)
             mensagem_completa = self._construir_mensagem(email_unidade, bytes_pdf)
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()  # Ativa a criptografia TLS obrigatória
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, context=context) as server:
                 server.login(self.smtp_user, self.smtp_password)
                 server.sendmail(self.smtp_user, email_unidade, mensagem_completa.as_string())
             print(f"Sucesso: E-mail enviado com sucesso para {email_unidade}!")
