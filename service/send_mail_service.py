@@ -1,20 +1,14 @@
-import os, smtplib, io
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
+import os, io, base64
 from dotenv import load_dotenv
 from googleapiclient.http import MediaIoBaseDownload
-from repository.drive_repository import Drive_repository
+import postmark
 
 load_dotenv()
 
 class Send_mail_service:
     def __init__(self):
-        self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", 465))
-        self.smtp_user = os.getenv("SMTP_USER")
-        self.smtp_password = os.getenv("SMTP_PASSWORD")
+        self.server_token = os.getenv("POSTMARK_SERVER_TOKEN")
+        self.sender_email = os.getenv("POSTMARK_SENDER_EMAIL")
         self.drive_repo = Drive_repository()
         self.service = self.drive_repo.obter_service()
 
@@ -42,17 +36,13 @@ class Send_mail_service:
             raise e
 
     def _construir_mensagem(self, email_unidade: str, bytes_pdf: bytes) -> MIMEMultipart:
-        msg = MIMEMultipart()
-        msg['From'] = self.smtp_user
-        msg['To'] = email_unidade
-        msg['Subject'] = "Relatório de Serviço Técnico - SMECICT"
-        corpo_html = """
+        corpo_html = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
                 <h2 style="color: #0056b3;">Agradecimento</h2>
                 <p>Olá,</p>
                 <p>Gostaríamos de agradecer pela recepção e colaboração durante o atendimento realizado em sua unidade escolar.</p>
-                <p>O <strong>Relatório de Serviço Técnico (RST)</strong> referente à visita foi gerado com sucesso, assinado digitalmente e encontra-se <strong>anexado a esta mensagem</strong> para fins de arquivamento e conferência.</p>
+                <p>O <strong>Relatório de Serviço Técnico (RST)</strong> referente à visita foi gerado com sucesso, assinado digitalmente e encontra-se <strong>anexado a este e-mail</strong>.</p>
                 <p>Qualquer dúvida ou nova solicitação, estaremos à total disposição para ajudá-los.</p>
                 <br>
                 <p>Atenciosamente,</p>
@@ -61,32 +51,30 @@ class Send_mail_service:
             </body>
         </html>
         """
-        msg.attach(MIMEText(corpo_html, 'html'))
-        anexo = MIMEBase('application', 'pdf')
-        anexo.set_payload(bytes_pdf)
-        encoders.encode_base64(anexo)
-        anexo.add_header(
-            'Content-Disposition',
-            'attachment',
-            filename="Relatorio_Serviço_Tecnico.pdf"
-        )
-        msg.attach(anexo)
-        return msg
+        return corpo_html
 
     def enviar_email_para_unidade(self, email_unidade: str, link_arquivo_drive: str):
-        """
-        Método principal que coordena o download, montagem do e-mail e envio via SMTP.
-        """
-        print(f">>> Iniciando processo de envio para EMAIL: {email_unidade}")
-        print(f">>> ARQUIVO_DRIVE: {link_arquivo_drive}")
         try:
             bytes_pdf = self._criar_copia_do_documento(link_arquivo_drive)
-            mensagem_completa = self._construir_mensagem(email_unidade, bytes_pdf)
-            context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, context=context) as server:
-                server.login(self.smtp_user, self.smtp_password)
-                server.sendmail(self.smtp_user, email_unidade, mensagem_completa.as_string())
-            print(f"Sucesso: E-mail enviado com sucesso para {email_unidade}!")
+            pdf_base64 = base64.b64encode(bytes_pdf).decode('utf-8')
+            corpo_html = self._construir_corpo_html(email_unidade)
+            with postmark.ServerClient(self.server_token) as client:
+                response = client.outbound.send({
+                    "from": self.sender_email,
+                    "to": email_unidade,
+                    "subject": "Relatório de Serviço Técnico - SMECICT",
+                    "html_body": corpo_html,
+                    "attachments": [
+                        {
+                            "name": "Relatorio_Servico_Tecnico.pdf",
+                            "content": pdf_base64,
+                            "content_type": "application/pdf"
+                        }
+                    ]
+                })
+
+            print(f"Sucesso: E-mail enviado com sucesso para {email_unidade}! (ID: {response.message_id})")
+
         except Exception as e:
             print(f"Erro crítico no envio de e-mail: {e}")
             raise e
