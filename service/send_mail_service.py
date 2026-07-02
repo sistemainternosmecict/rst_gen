@@ -35,7 +35,7 @@ class Send_mail_service:
             print(f"Erro ao baixar o binário correto do arquivo no Drive: {e}")
             raise e
 
-    def _construir_mensagem(self, email_unidade: str, bytes_pdf: bytes) -> MIMEMultipart:
+    def _construir_mensagem(self, email_unidade: str, bytes_pdf: bytes):
         corpo_html = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
