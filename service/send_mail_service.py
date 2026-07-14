@@ -1,7 +1,16 @@
-import os, io, base64
+import os
+import io
+import base64
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+
 from dotenv import load_dotenv
 from googleapiclient.http import MediaIoBaseDownload
-import postmark
+from repository.drive_repository import Drive_repository
+
+# Removemos o "import postmark" pois usaremos smtplib
 
 load_dotenv()
 
@@ -11,6 +20,10 @@ class Send_mail_service:
         self.sender_email = os.getenv("POSTMARK_SENDER_EMAIL")
         self.drive_repo = Drive_repository()
         self.service = self.drive_repo.obter_service()
+        
+        # Configurações do SMTP do Postmark
+        self.smtp_server = "smtp.postmarkapp.com"
+        self.smtp_port = 587  # Porta recomendada com STARTTLS
 
     def _criar_copia_do_documento(self, link_arquivo_drive: str) -> bytes:
         try:
@@ -35,7 +48,14 @@ class Send_mail_service:
             print(f"Erro ao baixar o binário correto do arquivo no Drive: {e}")
             raise e
 
-    def _construir_mensagem(self, email_unidade: str, bytes_pdf: bytes):
+    def _construir_mensagem(self, email_unidade: str, bytes_pdf: bytes) -> MIMEMultipart:
+        # Criamos uma mensagem multipart (necessária para e-mails com anexos)
+        msg = MIMEMultipart("mixed")
+        msg["From"] = self.sender_email
+        msg["To"] = email_unidade
+        msg["Subject"] = "Relatório de Serviço Técnico - SMECICT"
+
+        # Corpo do e-mail em HTML
         corpo_html = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -51,29 +71,48 @@ class Send_mail_service:
             </body>
         </html>
         """
-        return corpo_html
+        
+        # Anexa a parte HTML ao e-mail
+        parte_html = MIMEText(corpo_html, "html")
+        msg.attach(parte_html)
+
+        # Anexa o arquivo PDF
+        parte_anexo = MIMEApplication(bytes_pdf, _subtype="pdf")
+        parte_anexo.add_header(
+            "Content-Disposition", 
+            "attachment", 
+            filename="Relatorio_Servico_Tecnico.pdf"
+        )
+        msg.attach(parte_anexo)
+
+        return msg
 
     def enviar_email_para_unidade(self, email_unidade: str, link_arquivo_drive: str):
         try:
+            # 1. Obtém os bytes do PDF a partir do Google Drive
             bytes_pdf = self._criar_copia_do_documento(link_arquivo_drive)
-            pdf_base64 = base64.b64encode(bytes_pdf).decode('utf-8')
-            corpo_html = self._construir_corpo_html(email_unidade)
-            with postmark.ServerClient(self.server_token) as client:
-                response = client.outbound.send({
-                    "from": self.sender_email,
-                    "to": email_unidade,
-                    "subject": "Relatório de Serviço Técnico - SMECICT",
-                    "html_body": corpo_html,
-                    "attachments": [
-                        {
-                            "name": "Relatorio_Servico_Tecnico.pdf",
-                            "content": pdf_base64,
-                            "content_type": "application/pdf"
-                        }
-                    ]
-                })
+            
+            # 2. Constrói o objeto de e-mail com anexo estruturado
+            mensagem = self._construir_mensagem(email_unidade, bytes_pdf)
+            
+            # 3. Estabelece a ligação SMTP e envia
+            print(f"Conectando ao servidor SMTP do Postmark para enviar para {email_unidade}...")
+            
+            # Criamos a conexão SMTP utilizando a porta 587
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()  # Ativa a criptografia STARTTLS (obrigatória)
+                
+                # Autenticação: O Postmark utiliza o Server API Token tanto para o utilizador como para a senha
+                server.login(self.server_token, self.server_token)
+                
+                # Envia o e-mail convertido para string
+                server.sendmail(
+                    self.sender_email, 
+                    email_unidade, 
+                    mensagem.as_string()
+                )
 
-            print(f"Sucesso: E-mail enviado com sucesso para {email_unidade}! (ID: {response.message_id})")
+            print(f"Sucesso: E-mail enviado com sucesso para {email_unidade}!")
 
         except Exception as e:
             print(f"Erro crítico no envio de e-mail: {e}")

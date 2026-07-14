@@ -2,7 +2,7 @@ from service.pdf_service import Pdf_service
 from service.rst_service import Rst_service
 from service.drive_service import Drive_service
 from service.taskflow_service import Taskflow_service
-#from service.send_mail_service import Send_mail_service
+from service.send_mail_service import Send_mail_service
 from service.ferramentas import Ferramentas
 from schemas.rst_schemas import RSTDatabasePreSend 
 from dotenv import load_dotenv
@@ -33,8 +33,8 @@ class Orquestrador:
             taskflow_s = Taskflow_service()
             taskflow_s.inserir_comentario_na_task(dados_doc.rst_task_id, link_arquivo_drive, filename, dados_doc.rst_user_id)
 
-            #send_mail_s = Send_mail_service()
-            #send_mail_s.enviar_email_para_unidade(dados_doc.rst_email_unidade, link_arquivo_drive)
+            send_mail_s = Send_mail_service()
+            send_mail_s.enviar_email_para_unidade(dados_doc.rst_email_unidade, link_arquivo_drive)
 
             resposta_orquestrador = {
                 "status":"success",

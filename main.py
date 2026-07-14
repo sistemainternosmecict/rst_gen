@@ -14,10 +14,10 @@ origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.st
 if not origins:
     origins = [
         "http://localhost",  
-        "http://localhost:8080", 
+        "http://localhost:8081", 
         "localhost",  
         "http://127.0.0.1", 
-        "http://192.168.100.215:8080", 
+        "http://192.168.100.215:8081", 
         "http://192.168.100.215", 
         "https://taskflow-frontend-pqok.onrender.com" 
        ]
