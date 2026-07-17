@@ -13,7 +13,7 @@ class Taskflow_repository:
         self.supabase: Client = create_client(self.url, self.key)
 
     def inserir_comentario_na_task(self, task_id:str, link_arquivo_drive:str, file_name:str, user_id:str):
-        content = f"Relatório de serviço técnico, assinado digitalmente e anexado automaticamente."
+        content = f"Relatório de serviço técnico, assinado digitalmente e anexado automaticamente à demanda. Uma cópia do documento foi enviada para a unidade atendida. A validade do documento pode ser verificada por meio do seu codigo QR ou o link da verificação impressos no documento."
         payload = {
             "task_id": task_id,
             "user_id": user_id,

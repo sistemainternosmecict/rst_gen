@@ -4,12 +4,15 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
-from reportlab.lib.colors import HexColor
 from reportlab.pdfgen import canvas
 from pypdf import PdfReader, PdfWriter
 from datetime import datetime
 from PIL import Image, ImageOps
-import os, secrets, qrcode, io, base64
+import os
+import secrets
+import qrcode
+import io
+import base64
 
 MAPA_COORDENADAS_CAUSAS = {
     "Configuração de sistema": (39, 488),
@@ -24,15 +27,18 @@ MAPA_COORDENADAS_CAUSAS = {
     "Outros": (230, 428),
 }
 
+
 class Pdf_service:
     def __init__(self):
         data_atual = datetime.now().strftime("%d%m%Y")
         diretorio_pdf = os.getenv("LOCAL_PDF_DIR", "")
         if diretorio_pdf and not os.path.exists(diretorio_pdf):
             os.makedirs(diretorio_pdf, exist_ok=True)
-        self.pdf_output_path = os.path.join(diretorio_pdf, f'RST{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf')
+        self.pdf_output_path = os.path.join(
+            diretorio_pdf, f"RST{data_atual}_{self._gerar_sufixo_aleatorio()}.pdf"
+        )
 
-    def construir_documento(self, dados_doc:dict, rst_doc_hash:str):
+    def construir_documento(self, dados_doc: dict, rst_doc_hash: str):
         template_path = os.getenv("TEMPLATE_PATH", "")
         dados_divididos = self.dividir_dados(dados_doc)
         url_para_validacao = self._criar_link_para_verificacao_validade(rst_doc_hash)
@@ -40,7 +46,7 @@ class Pdf_service:
         self.salvar_pdf()
         return self.pdf_output_path
 
-    def dividir_dados(self, dados_doc:dict)->list:
+    def dividir_dados(self, dados_doc: dict) -> list:
         self.dados_unidade = {
             "rst_unidade_escolar": dados_doc.rst_unidade_escolar,
             "rst_email_unidade": dados_doc.rst_email_unidade,
@@ -51,20 +57,20 @@ class Pdf_service:
         self.dados_solicitante = {
             "rst_nome_solicitante": dados_doc.rst_nome_solicitante,
             "rst_cargo_solicitante": dados_doc.rst_cargo_solicitante,
-            "rst_matricula_solicitante":dados_doc.rst_matricula_solicitante,
+            "rst_matricula_solicitante": dados_doc.rst_matricula_solicitante,
         }
 
         self.dados_tecnico = {
             "rst_nome_tecnico": dados_doc.rst_nome_tecnico,
-            "rst_data_atendimento": dados_doc.rst_data_atendimento
+            "rst_data_atendimento": dados_doc.rst_data_atendimento,
         }
 
         self.causas = dados_doc.rst_causas
         self.procedimentos = dados_doc.rst_procedimentos
         self.observacoes = {
-            "rst_observacoes":dados_doc.rst_observacoes,
+            "rst_observacoes": dados_doc.rst_observacoes,
             "rst_numero_oficio": dados_doc.rst_numero_oficio,
-            "rst_data_chamado":dados_doc.rst_data_chamado,
+            "rst_data_chamado": dados_doc.rst_data_chamado,
             "rst_unidade_escolar": dados_doc.rst_unidade_escolar,
         }
 
@@ -73,8 +79,8 @@ class Pdf_service:
             "rst_assinatura_tecnico": dados_doc.rst_assinatura_tecnico,
             "rst_nome_solicitante": dados_doc.rst_nome_solicitante,
             "rst_cargo_solicitante": dados_doc.rst_cargo_solicitante,
-            "rst_matricula_solicitante":dados_doc.rst_matricula_solicitante,
-            "rst_nome_tecnico": dados_doc.rst_nome_tecnico
+            "rst_matricula_solicitante": dados_doc.rst_matricula_solicitante,
+            "rst_nome_tecnico": dados_doc.rst_nome_tecnico,
         }
 
         return [
@@ -84,51 +90,73 @@ class Pdf_service:
             self.causas,
             self.procedimentos,
             self.observacoes,
-            self.dados_assinaturas
+            self.dados_assinaturas,
         ]
 
-    def escrever_informacoes_unidade(self, dados_unidade:dict):
+    def escrever_informacoes_unidade(self, dados_unidade: dict):
         self.cv.drawString(120, 682, dados_unidade["rst_unidade_escolar"])
         self.cv.drawString(70, 660, dados_unidade["rst_bairro"])
         self.cv.drawString(370, 660, dados_unidade["rst_distrito"])
 
-    def escrever_dados_solicitante(self, dados_solicitante:dict):
+    def escrever_dados_solicitante(self, dados_solicitante: dict):
         self.cv.drawString(140, 612, dados_solicitante["rst_nome_solicitante"])
         self.cv.drawString(70, 590, dados_solicitante["rst_cargo_solicitante"])
         self.cv.drawString(480, 590, dados_solicitante["rst_matricula_solicitante"])
 
-    def escrever_dados_tecnico(self, dados_tecnico:dict):
+    def escrever_dados_tecnico(self, dados_tecnico: dict):
         self.cv.drawString(120, 542, dados_tecnico["rst_nome_tecnico"])
         self.cv.drawString(470, 542, dados_tecnico["rst_data_atendimento"])
 
-    def escrever_causas_problemas_tecnicos_relacionados(self, causas:list):
+    def escrever_causas_problemas_tecnicos_relacionados(self, causas: list):
         self.cv.setFont("Helvetica-Bold", 12)
         for causa in causas:
             if causa in MAPA_COORDENADAS_CAUSAS:
                 x, y = MAPA_COORDENADAS_CAUSAS[causa]
                 self.cv.drawCentredString(x, y, "X")
 
-    def escrever_procedimentos_realizados(self, procedimentos:str):
+    def escrever_procedimentos_realizados(self, procedimentos: str):
         self._escrever_paragrafo_contido(procedimentos)
 
-    def escrever_observacoes(self, observacoes:dict):
+    def escrever_observacoes(self, observacoes: dict):
         self.cv.setFont("Helvetica", 9)
         self._escrever_paragrafo_contido(observacoes["rst_observacoes"], 240, 220)
         self.cv.setFont("Helvetica-Bold", 7)
-        self.cv.drawString(30, 260, f"RST referente ao ofício {observacoes["rst_numero_oficio"]} da unidade {observacoes["rst_unidade_escolar"]} recebido dia {observacoes["rst_data_chamado"]}")
+        self.cv.drawString(
+            30,
+            260,
+            f"RST referente ao ofício {observacoes['rst_numero_oficio']} da unidade {observacoes['rst_unidade_escolar']} recebido dia {observacoes['rst_data_chamado']}",
+        )
 
-    def escrever_assinaturas(self, dados_assinaturas:dict):
+    def escrever_assinaturas(self, dados_assinaturas: dict):
         largura_assinatura = 5 * cm
         altura_assinatura = 4 * cm
         posicao_y = 4.2 * cm
 
         posicao_x_esquerda = 3.0 * cm
-        posicao_x_direita = 21.0 * cm - 3.0 * cm - largura_assinatura # 21cm é a largura total do A4
+        posicao_x_direita = (
+            21.0 * cm - 3.0 * cm - largura_assinatura
+        )  # 21cm é a largura total do A4
 
-        self.cv.drawCentredString(posicao_x_direita + (largura_assinatura / 2), altura_assinatura + 50, dados_assinaturas["rst_nome_solicitante"])
-        self.cv.drawCentredString(posicao_x_direita + (largura_assinatura / 2), altura_assinatura + 40, dados_assinaturas["rst_cargo_solicitante"])
-        self.cv.drawCentredString(posicao_x_direita + (largura_assinatura / 2), altura_assinatura + 30, dados_assinaturas["rst_matricula_solicitante"])
-        self.cv.drawCentredString(posicao_x_esquerda + (largura_assinatura / 2), altura_assinatura + 50, dados_assinaturas["rst_nome_tecnico"])
+        self.cv.drawCentredString(
+            posicao_x_direita + (largura_assinatura / 2),
+            altura_assinatura + 50,
+            dados_assinaturas["rst_nome_solicitante"],
+        )
+        self.cv.drawCentredString(
+            posicao_x_direita + (largura_assinatura / 2),
+            altura_assinatura + 40,
+            dados_assinaturas["rst_cargo_solicitante"],
+        )
+        self.cv.drawCentredString(
+            posicao_x_direita + (largura_assinatura / 2),
+            altura_assinatura + 30,
+            dados_assinaturas["rst_matricula_solicitante"],
+        )
+        self.cv.drawCentredString(
+            posicao_x_esquerda + (largura_assinatura / 2),
+            altura_assinatura + 50,
+            dados_assinaturas["rst_nome_tecnico"],
+        )
 
         def transformar_imagem_em_azul(base64_str):
             if "," in base64_str:
@@ -143,7 +171,10 @@ class Pdf_service:
             cinza = ImageOps.grayscale(img_pil)
             mascara_traço = ImageOps.invert(cinza)
             img_azul = Image.composite(azul_solido, img_pil, mascara_traço)
-            img_final = Image.merge("RGBA", (img_azul.split()[0], img_azul.split()[1], img_azul.split()[2], a))
+            img_final = Image.merge(
+                "RGBA",
+                (img_azul.split()[0], img_azul.split()[1], img_azul.split()[2], a),
+            )
 
             buffer_final = io.BytesIO()
             img_final.save(buffer_final, format="PNG")
@@ -154,14 +185,14 @@ class Pdf_service:
         base64_solicitante = dados_assinaturas.get("rst_assinatura_solicitante")
         if base64_solicitante:
             try:
-                img_solicitante = transformar_imagem_em_azul(base64_solicitante) 
+                img_solicitante = transformar_imagem_em_azul(base64_solicitante)
                 self.cv.drawImage(
                     img_solicitante,
                     posicao_x_direita,
                     posicao_y,
                     width=largura_assinatura,
                     height=altura_assinatura,
-                    mask='auto'
+                    mask="auto",
                 )
             except Exception as e:
                 print(f"Erro ao processar assinatura do solicitante: {e}")
@@ -169,27 +200,31 @@ class Pdf_service:
         base64_tecnico = dados_assinaturas.get("rst_assinatura_tecnico")
         if base64_tecnico:
             try:
-                img_tecnico = transformar_imagem_em_azul(base64_tecnico) 
+                img_tecnico = transformar_imagem_em_azul(base64_tecnico)
                 self.cv.drawImage(
                     img_tecnico,
                     posicao_x_esquerda,
                     posicao_y,
                     width=largura_assinatura,
                     height=altura_assinatura,
-                    mask='auto'
-            )
+                    mask="auto",
+                )
             except Exception as e:
                 print(f"Erro ao processar assinatura do técnico: {e}")
 
-    def escrever_link_para_validacao(self, url_para_validacao:str):
+    def escrever_link_para_validacao(self, url_para_validacao: str):
         self.cv.setFont("Helvetica", 9)
-        instrucoes = f"Leia o qr code ou acesse o seguinte link para validar o documento."
+        instrucoes = (
+            "Leia o qr code ou acesse o seguinte link para validar o documento."
+        )
         x = 24
         y = 2.8 * cm
         self.cv.drawString(x, y, instrucoes)
         self.cv.drawString(x, y - 10, url_para_validacao)
 
-    def construir_pagina(self, template_path:str, dados_divididos:list, url_para_validacao:str):
+    def construir_pagina(
+        self, template_path: str, dados_divididos: list, url_para_validacao: str
+    ):
         self.dados_temporarios = "temp_pdf_data.pdf"
         self.width, self.height = A4
 
@@ -225,7 +260,7 @@ class Pdf_service:
         if os.path.exists(self.dados_temporarios):
             os.remove(self.dados_temporarios)
 
-    def _escrever_paragrafo_contido(self, texto: str, y:int = 315, limite:int = 330):
+    def _escrever_paragrafo_contido(self, texto: str, y: int = 315, limite: int = 330):
         paragrafo_x = 30
         paragrafo_y = y
         paragrafo_largura = 535
@@ -242,7 +277,14 @@ class Pdf_service:
             self.cv.saveState()
             self.cv.setStrokeColorRGB(1, 0, 0)  # Vermelho para debug
             self.cv.setLineWidth(0.5)
-            self.cv.rect(paragrafo_x, paragrafo_y, paragrafo_largura, paragrafo_altura, stroke=1, fill=0)
+            self.cv.rect(
+                paragrafo_x,
+                paragrafo_y,
+                paragrafo_largura,
+                paragrafo_altura,
+                stroke=1,
+                fill=0,
+            )
             self.cv.restoreState()
 
         estilo_customizado = ParagraphStyle(
@@ -250,20 +292,26 @@ class Pdf_service:
             fontName="Helvetica",
             fontSize=paragrafo_tamanho_fonte,
             leading=paragrafo_espacamento_linha,  # Controla o espaçamento vertical
-            alignment=TA_LEFT           # Alinhamento do texto
+            alignment=TA_LEFT,  # Alinhamento do texto
         )
 
         p = Paragraph(texto, estilo_customizado)
 
         frame = Frame(
-            paragrafo_x, paragrafo_y, paragrafo_largura, paragrafo_altura,
-            leftPadding=2, rightPadding=2, topPadding=2, bottomPadding=2,
-            id='frame_paragrafo'
+            paragrafo_x,
+            paragrafo_y,
+            paragrafo_largura,
+            paragrafo_altura,
+            leftPadding=2,
+            rightPadding=2,
+            topPadding=2,
+            bottomPadding=2,
+            id="frame_paragrafo",
         )
 
         frame.addFromList([p], self.cv)
-    
-    def _criar_qr_code(self, url_validacao:str):
+
+    def _criar_qr_code(self, url_validacao: str):
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -281,10 +329,18 @@ class Pdf_service:
         tamanho_qr = 2.2 * cm
 
         reader = ImageReader(buffer)
-        self.cv.drawImage(reader, (self.width / 2) - (tamanho_qr / 2), 2, width=tamanho_qr, height=tamanho_qr)
+        self.cv.drawImage(
+            reader,
+            (self.width / 2) - (tamanho_qr / 2),
+            2,
+            width=tamanho_qr,
+            height=tamanho_qr,
+        )
 
-    def _criar_link_para_verificacao_validade(self, rst_doc_hash:str):
-        return f"{os.getenv("URL_BASE")}/api/v1/validar_documento_por_hash/{rst_doc_hash}"
+    def _criar_link_para_verificacao_validade(self, rst_doc_hash: str):
+        return (
+            f"{os.getenv('URL_BASE')}/api/v1/validar_documento_por_hash/{rst_doc_hash}"
+        )
 
     def _gerar_sufixo_aleatorio(self, bytes_aleatorios: int = 8) -> str:
         return secrets.token_urlsafe(9).lower()

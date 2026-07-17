@@ -4,14 +4,15 @@ from service.drive_service import Drive_service
 from service.taskflow_service import Taskflow_service
 from service.send_mail_service import Send_mail_service
 from service.ferramentas import Ferramentas
-from schemas.rst_schemas import RSTDatabasePreSend 
+from schemas.rst_schemas import RSTDatabasePreSend
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
+
 class Orquestrador:
-    def gerar_documento_assinado(self, dados_doc:dict)->dict:
+    def gerar_documento_assinado(self, dados_doc: dict) -> None:
         ferramentas = Ferramentas()
         rst_doc_hash = ferramentas.calcular_hash_documento(dados_doc)
         pdfS = Pdf_service()
@@ -22,29 +23,30 @@ class Orquestrador:
             filename = filename_split[1]
             drive_id_pasta = os.getenv("GDRIVE_DIR_ID")
             drive_s = Drive_service()
-            link_arquivo_drive = drive_s.salvar_arquivo_drive(caminho_documento, drive_id_pasta)
+            link_arquivo_drive = drive_s.salvar_arquivo_drive(
+                caminho_documento, drive_id_pasta
+            )
             payload_completo = RSTDatabasePreSend(
                 **dados_doc.dict(),
                 rst_link_arquivo_drive=link_arquivo_drive,
-                rst_doc_hash=rst_doc_hash
+                rst_doc_hash=rst_doc_hash,
             )
             rstS = Rst_service()
             rstS.registrar_documento(payload_completo)
             taskflow_s = Taskflow_service()
-            taskflow_s.inserir_comentario_na_task(dados_doc.rst_task_id, link_arquivo_drive, filename, dados_doc.rst_user_id)
+            taskflow_s.inserir_comentario_na_task(
+                dados_doc.rst_task_id,
+                link_arquivo_drive,
+                filename,
+                dados_doc.rst_user_id,
+            )
 
             send_mail_s = Send_mail_service()
-            send_mail_s.enviar_email_para_unidade(dados_doc.rst_email_unidade, link_arquivo_drive)
+            mail_response = send_mail_s.enviar_email_para_unidade(
+                dados_doc.rst_email_unidade, link_arquivo_drive
+            )
 
-            resposta_orquestrador = {
-                "status":"success",
-                "msg": "Documento gerado, arquivado, registrado e anexado com sucesso!",
-                "nome_arquivo":filename,
-                "rst_doc_hash":rst_doc_hash
-            }
-            return resposta_orquestrador
-
-    def validar_documento_por_hash(self, hash:str)->dict:
+    def validar_documento_por_hash(self, hash: str) -> dict:
         rstS = Rst_service()
         doc_dict = rstS.obter_documento_dados(hash)
         return doc_dict
