@@ -213,7 +213,7 @@ class Pdf_service:
                 print(f"Erro ao processar assinatura do técnico: {e}")
 
     def escrever_link_para_validacao(self, url_para_validacao: str):
-        self.cv.setFont("Helvetica", 9)
+        self.cv.setFont("Helvetica", 7)
         instrucoes = (
             "Leia o qr code ou acesse o seguinte link para validar o documento."
         )
